@@ -17,7 +17,7 @@ type Config struct {
 	MaxIdleConns int
 	// the maximum amount of time a connection may be reused in second
 	ConnMaxLifetime time.Duration
-	// log sql
+	// log level
 	LogLevel logger.LogLevel
 }
 

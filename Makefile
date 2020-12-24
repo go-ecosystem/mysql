@@ -1,6 +1,7 @@
 SHELL := /bin/bash
 BASEDIR = $(shell pwd)
 
+all: fmt mod lint test
 fmt:
 	gofmt -w .
 mod:
@@ -9,7 +10,7 @@ lint:
 	golangci-lint run
 .PHONY: test
 test: mod
-	go test -gcflags=-l -coverpkg=./... -coverprofile=coverage.data ./...
+	sh scripts/test.sh
 .PHONY: mysql
 mysql:
 	sh scripts/mysql.sh

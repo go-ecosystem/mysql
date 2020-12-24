@@ -2,6 +2,7 @@ package mysql
 
 import (
 	"database/sql"
+	"os"
 
 	"github.com/DATA-DOG/go-sqlmock"
 
@@ -11,6 +12,7 @@ import (
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
+	"gorm.io/gorm/schema"
 )
 
 var container = make(map[string]*gorm.DB)
@@ -49,40 +51,53 @@ func Register(config *Config) {
 
 // RegisterByKey register examples by key
 func RegisterByKey(config *Config, key string) {
-	// unregister existed one
-	UnregisterByKey(key)
+	// deregister existed one
+	DeregisterByKey(key)
 
 	dsn := config.GenDSN()
 
+	newLogger := logger.New(
+		log.New(os.Stdout, "\r\n", log.LstdFlags),
+		logger.Config{
+			SlowThreshold: time.Second,
+			LogLevel:      config.LogLevel,
+			Colorful:      false,
+		},
+	)
+
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Silent),
+		NamingStrategy: schema.NamingStrategy{
+			SingularTable: true,
+		},
+		Logger: newLogger,
 	})
 	if err != nil {
 		log.Println("Failed to connect to mysql", dsn, err)
 		panic(err)
 	}
 
-	// https://gorm.io/docs/connecting_to_the_database.html#Connection-Pool
 	sqlDB, err := db.DB()
 	if err != nil {
-		log.Println(err)
-	} else {
-		sqlDB.SetConnMaxLifetime(config.ConnMaxLifetime * time.Second)
-		sqlDB.SetMaxOpenConns(config.MaxOpenConns)
-		sqlDB.SetMaxIdleConns(config.MaxIdleConns)
+		log.Println("get database pool fail,  ", err)
+		panic(err)
 	}
+
+	// https://gorm.io/docs/connecting_to_the_database.html#Connection-Pool
+	sqlDB.SetConnMaxLifetime(config.ConnMaxLifetime * time.Second)
+	sqlDB.SetMaxOpenConns(config.MaxOpenConns)
+	sqlDB.SetMaxIdleConns(config.MaxIdleConns)
 
 	// retain the db
 	container[key] = db
 }
 
-// Unregister unregister default examples
-func Unregister() {
-	UnregisterByKey(defaultKey)
+// Deregister deregister default examples
+func Deregister() {
+	DeregisterByKey(defaultKey)
 }
 
-// UnregisterByKey unregister examples by key
-func UnregisterByKey(key string) {
+// DeregisterByKey deregister examples by key
+func DeregisterByKey(key string) {
 	db := container[key]
 	if db == nil {
 		return
@@ -98,6 +113,11 @@ func UnregisterByKey(key string) {
 	delete(container, key)
 }
 
+// SetLogger replace default logger
+func SetLogger(db *gorm.DB, logger logger.Interface) {
+	db.Logger = logger
+}
+
 // MockDB mock default DB
 func MockDB() (*sql.DB, sqlmock.Sqlmock) {
 	return MockDBByKey(defaultKey)
@@ -105,20 +125,27 @@ func MockDB() (*sql.DB, sqlmock.Sqlmock) {
 
 // MockDBByKey mock DB by key
 func MockDBByKey(key string) (*sql.DB, sqlmock.Sqlmock) {
-	sqlDB, mock, err := sqlmock.New()
+	db, mock, err := sqlmock.New()
 	if err != nil {
 		panic(err)
 	}
 
-	db, err := gorm.Open(mysql.New(mysql.Config{
-		Conn: sqlDB,
-	}), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Info),
+	dialer := mysql.New(mysql.Config{
+		Conn:                      db,
+		SkipInitializeWithVersion: true,
 	})
+
+	gdb, err := gorm.Open(dialer, &gorm.Config{
+		NamingStrategy: schema.NamingStrategy{
+			SingularTable: true,
+		},
+	})
+
 	if err != nil {
+		log.Println("connect to database fail, ", err)
 		panic(err)
 	}
 
-	container[key] = db
-	return sqlDB, mock
+	container[key] = gdb
+	return db, mock
 }
