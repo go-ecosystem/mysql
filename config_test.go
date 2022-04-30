@@ -16,6 +16,7 @@ func TestNewConfig(t *testing.T) {
 	dbname := "5"
 	charset := "6"
 	logLevel := logger.Info
+	tablePrefix := "t_"
 
 	t.Run("without option", func(t *testing.T) {
 		got := NewConfig(user, pwd, host, port, dbname, charset, logLevel)
@@ -123,12 +124,76 @@ func TestNewConfig(t *testing.T) {
 		}
 	})
 
+	t.Run("with singularTable", func(t *testing.T) {
+		singularTable := true
+
+		got := NewConfig(user, pwd, host, port, dbname, charset, logLevel, WithSingularTable(singularTable))
+
+		want := &Config{
+			Connection: &ConnectionConfig{
+				User:      user,
+				Pwd:       pwd,
+				Host:      host,
+				Port:      port,
+				DBName:    dbname,
+				Charset:   charset,
+				ParseTime: true,
+				Loc:       "Local",
+			},
+			MaxOpenConns:    defaultConfigOption().maxOpenConns,
+			MaxIdleConns:    defaultConfigOption().maxIdleConns,
+			ConnMaxLifetime: defaultConfigOption().connMaxLifetime,
+			TablePrefix:     defaultConfigOption().tablePrefix,
+			SingularTable:   singularTable,
+			LogLevel:        logLevel,
+		}
+
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("NewConfig() = %v, want %v", got, want)
+		}
+	})
+
+	t.Run("with tablePrefix", func(t *testing.T) {
+		got := NewConfig(user, pwd, host, port, dbname, charset, logLevel, WithTablePrefix(tablePrefix))
+
+		want := &Config{
+			Connection: &ConnectionConfig{
+				User:      user,
+				Pwd:       pwd,
+				Host:      host,
+				Port:      port,
+				DBName:    dbname,
+				Charset:   charset,
+				ParseTime: true,
+				Loc:       "Local",
+			},
+			MaxOpenConns:    defaultConfigOption().maxOpenConns,
+			MaxIdleConns:    defaultConfigOption().maxIdleConns,
+			ConnMaxLifetime: defaultConfigOption().connMaxLifetime,
+			TablePrefix:     tablePrefix,
+			SingularTable:   defaultConfigOption().singularTable,
+			LogLevel:        logLevel,
+		}
+
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("NewConfig() = %v, want %v", got, want)
+		}
+	})
+
 	t.Run("with options", func(t *testing.T) {
 		maxOpenConns := 1000
 		maxIdleConns := 2000
 		var connMaxLifetime time.Duration = 5000
+		singularTable := true
 
-		got := NewConfig(user, pwd, host, port, dbname, charset, logLevel, WithConnMaxLifetime(connMaxLifetime), WithMaxIdleConns(maxIdleConns), WithMaxOpenConns(maxOpenConns))
+		var options = make([]ConfigOption, 0)
+		options = append(options, WithConnMaxLifetime(connMaxLifetime))
+		options = append(options, WithMaxIdleConns(maxIdleConns))
+		options = append(options, WithMaxOpenConns(maxOpenConns))
+		options = append(options, WithSingularTable(singularTable))
+		options = append(options, WithTablePrefix(tablePrefix))
+
+		got := NewConfig(user, pwd, host, port, dbname, charset, logLevel, options...)
 
 		want := &Config{
 			Connection: &ConnectionConfig{
@@ -145,6 +210,8 @@ func TestNewConfig(t *testing.T) {
 			MaxIdleConns:    maxIdleConns,
 			ConnMaxLifetime: connMaxLifetime,
 			LogLevel:        logLevel,
+			TablePrefix:     tablePrefix,
+			SingularTable:   singularTable,
 		}
 
 		if !reflect.DeepEqual(got, want) {

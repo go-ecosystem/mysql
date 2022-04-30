@@ -19,6 +19,10 @@ type Config struct {
 	ConnMaxLifetime time.Duration
 	// log level
 	LogLevel logger.LogLevel
+	// TablePrefix table prefix
+	TablePrefix string
+	// SingularTable enable singular table names
+	SingularTable bool
 }
 
 // ConnectionConfig connection configuration
@@ -50,6 +54,8 @@ func NewConfig(user, pwd, host, port, dbname, charset string, logLevel logger.Lo
 		MaxOpenConns:    option.maxOpenConns,
 		MaxIdleConns:    option.maxIdleConns,
 		ConnMaxLifetime: option.connMaxLifetime,
+		TablePrefix:     option.tablePrefix,
+		SingularTable:   option.singularTable,
 		LogLevel:        logLevel,
 	}
 }

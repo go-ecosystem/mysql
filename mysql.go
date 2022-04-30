@@ -65,9 +65,14 @@ func RegisterByKey(config *Config, key string) {
 		},
 	)
 
-	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
+	const defaultStringSize = 256
+	db, err := gorm.Open(mysql.New(mysql.Config{
+		DSN:               dsn,
+		DefaultStringSize: defaultStringSize,
+	}), &gorm.Config{
 		NamingStrategy: schema.NamingStrategy{
-			SingularTable: true,
+			TablePrefix:   config.TablePrefix,
+			SingularTable: config.SingularTable,
 		},
 		Logger: newLogger,
 	})
@@ -119,15 +124,18 @@ func SetLogger(db *gorm.DB, logger logger.Interface) {
 }
 
 // MockDB mock default DB
-func MockDB() (*sql.DB, sqlmock.Sqlmock) {
-	return MockDBByKey(defaultKey)
+func MockDB(config *Config) (*sql.DB, sqlmock.Sqlmock) {
+	return MockDBByKey(config, defaultKey)
 }
 
 // MockDBByKey mock DB by key
-func MockDBByKey(key string) (*sql.DB, sqlmock.Sqlmock) {
+func MockDBByKey(config *Config, key string) (*sql.DB, sqlmock.Sqlmock) {
 	db, mock, err := sqlmock.New()
 	if err != nil {
 		panic(err)
+	}
+	if config == nil {
+		config = &Config{}
 	}
 
 	dialer := mysql.New(mysql.Config{
@@ -137,7 +145,8 @@ func MockDBByKey(key string) (*sql.DB, sqlmock.Sqlmock) {
 
 	gdb, err := gorm.Open(dialer, &gorm.Config{
 		NamingStrategy: schema.NamingStrategy{
-			SingularTable: true,
+			TablePrefix:   config.TablePrefix,
+			SingularTable: config.SingularTable,
 		},
 	})
 

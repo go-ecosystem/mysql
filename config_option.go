@@ -2,6 +2,12 @@ package mysql
 
 import "time"
 
+const (
+	defaultMaxOpenConns    = 150
+	defaultMaxIdleConns    = 150
+	defaultConnMaxLifetime = 100
+)
+
 // WithMaxOpenConns new maxOpenConns option
 func WithMaxOpenConns(maxOpenConns int) ConfigOption {
 	return newConfigFuncOption(func(o *configOption) {
@@ -23,6 +29,20 @@ func WithConnMaxLifetime(connMaxLifetime time.Duration) ConfigOption {
 	})
 }
 
+// WithTablePrefix new tablePrefix option
+func WithTablePrefix(tablePrefix string) ConfigOption {
+	return newConfigFuncOption(func(o *configOption) {
+		o.tablePrefix = tablePrefix
+	})
+}
+
+// WithSingularTable new singularTable option
+func WithSingularTable(singularTable bool) ConfigOption {
+	return newConfigFuncOption(func(o *configOption) {
+		o.singularTable = singularTable
+	})
+}
+
 // ConfigOption config option
 type ConfigOption interface {
 	apply(*configOption)
@@ -32,6 +52,8 @@ type configOption struct {
 	maxOpenConns    int
 	maxIdleConns    int
 	connMaxLifetime time.Duration
+	tablePrefix     string
+	singularTable   bool
 }
 
 func decodeConfigOpts(opts []ConfigOption) configOption {
@@ -44,9 +66,9 @@ func decodeConfigOpts(opts []ConfigOption) configOption {
 
 func defaultConfigOption() configOption {
 	return configOption{
-		maxOpenConns:    150,
-		maxIdleConns:    150,
-		connMaxLifetime: 100,
+		maxOpenConns:    defaultMaxOpenConns,
+		maxIdleConns:    defaultMaxIdleConns,
+		connMaxLifetime: defaultConnMaxLifetime,
 	}
 }
 
